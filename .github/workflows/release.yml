@@ -77,77 +77,77 @@ jobs:
 #         env:
 #           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
 #           MKDOCS_INSIDERS: ${{secrets.MKDOCS_INSIDERS}}
-  trigger:
-    runs-on: ubuntu-latest
-    needs: docker
-    steps:
-      - name: send dispatch
-        uses: peter-evans/repository-dispatch@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: flanksource/aws-sandbox
-          event-type: canary-checker-release
-  helm:
-    runs-on: ubuntu-latest
-    needs: [semantic-release, docker]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Download yq
-        run: |
-          wget -nv -nc -O yq https://github.com/mikefarah/yq/releases/download/v4.20.2/yq_linux_amd64
-          chmod +x yq
-      - name: Update chart version
-        run: ./yq -i e '.version = "${{ needs.semantic-release.outputs.release-version }}"' chart/Chart.yaml
-      - name: Update app version
-        run: ./yq -i e '.appVersion = "${{ needs.semantic-release.outputs.release-version }}"' chart/Chart.yaml
-      - name: Update image tags
-        run: ./yq -i e '.image.tag = "v${{ needs.semantic-release.outputs.release-version }}"' chart/values.yaml
-      - name: Set up Helm
-        uses: azure/setup-helm@v1
-        with:
-          version: v3.8.0
-      - name: Package Helm chart
-        run: |
-          make chart
-      - name: Clone charts repo
-        uses: actions/checkout@v3
-        with:
-          repository: "${{ github.repository_owner }}/charts"
-          path: charts
-          token: "${{ secrets.FLANKBOT }}"
-      - name: Update chart repo
-        run: |
-          cd charts
-          cp ../canary-checker-*.tgz ./
-          helm repo index --merge index.yaml .
-      - name: Push changes to chart repo
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: "Release ${{ needs.semantic-release.outputs.release-version }} of ${{ github.repository }}"
-          branch: gh-pages
-          repository: ./charts
-  update-incident-commander:
-    runs-on: ubuntu-latest
-    needs: [helm, semantic-release]
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          repository: "${{ github.repository_owner }}/incident-commander"
-          token: ${{ secrets.FLANKBOT }}
-          path: ./incident-commander
-      - name: Install yq
-        run: |
-          wget https://github.com/mikefarah/yq/releases/download/${VERSION}/${BINARY}.tar.gz -O - |\
-          tar xz && sudo mv ${BINARY} /usr/bin/yq
-        env:
-          VERSION: v4.25.1
-          BINARY: yq_linux_amd64
-      - name: Update canary-checker version in Incident-commander
-        run: |
-          cd incident-commander
-          yq eval-all -i  '(.dependencies[] | select(.name == "canary-checker")) ref $d | $d.version = "${{ needs.semantic-release.outputs.release-version }}"' chart/Chart.yaml
-      - name: Push changes to chart repo
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: "chore: update canary-checker chart dependency to ${{ needs.semantic-release.outputs.release-version }}"
-          repository: ./incident-commander
+#   trigger:
+#     runs-on: ubuntu-latest
+#     needs: docker
+#     steps:
+#       - name: send dispatch
+#         uses: peter-evans/repository-dispatch@v1
+#         with:
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#           repository: flanksource/aws-sandbox
+#           event-type: canary-checker-release
+#   helm:
+#     runs-on: ubuntu-latest
+#     needs: [semantic-release, docker]
+#     steps:
+#       - uses: actions/checkout@v2
+#       - name: Download yq
+#         run: |
+#           wget -nv -nc -O yq https://github.com/mikefarah/yq/releases/download/v4.20.2/yq_linux_amd64
+#           chmod +x yq
+#       - name: Update chart version
+#         run: ./yq -i e '.version = "${{ needs.semantic-release.outputs.release-version }}"' chart/Chart.yaml
+#       - name: Update app version
+#         run: ./yq -i e '.appVersion = "${{ needs.semantic-release.outputs.release-version }}"' chart/Chart.yaml
+#       - name: Update image tags
+#         run: ./yq -i e '.image.tag = "v${{ needs.semantic-release.outputs.release-version }}"' chart/values.yaml
+#       - name: Set up Helm
+#         uses: azure/setup-helm@v1
+#         with:
+#           version: v3.8.0
+#       - name: Package Helm chart
+#         run: |
+#           make chart
+#       - name: Clone charts repo
+#         uses: actions/checkout@v3
+#         with:
+#           repository: "${{ github.repository_owner }}/charts"
+#           path: charts
+#           token: "${{ secrets.FLANKBOT }}"
+#       - name: Update chart repo
+#         run: |
+#           cd charts
+#           cp ../canary-checker-*.tgz ./
+#           helm repo index --merge index.yaml .
+#       - name: Push changes to chart repo
+#         uses: stefanzweifel/git-auto-commit-action@v4
+#         with:
+#           commit_message: "Release ${{ needs.semantic-release.outputs.release-version }} of ${{ github.repository }}"
+#           branch: gh-pages
+#           repository: ./charts
+#   update-incident-commander:
+#     runs-on: ubuntu-latest
+#     needs: [helm, semantic-release]
+#     steps:
+#       - uses: actions/checkout@v3
+#         with:
+#           repository: "${{ github.repository_owner }}/incident-commander"
+#           token: ${{ secrets.FLANKBOT }}
+#           path: ./incident-commander
+#       - name: Install yq
+#         run: |
+#           wget https://github.com/mikefarah/yq/releases/download/${VERSION}/${BINARY}.tar.gz -O - |\
+#           tar xz && sudo mv ${BINARY} /usr/bin/yq
+#         env:
+#           VERSION: v4.25.1
+#           BINARY: yq_linux_amd64
+#       - name: Update canary-checker version in Incident-commander
+#         run: |
+#           cd incident-commander
+#           yq eval-all -i  '(.dependencies[] | select(.name == "canary-checker")) ref $d | $d.version = "${{ needs.semantic-release.outputs.release-version }}"' chart/Chart.yaml
+#       - name: Push changes to chart repo
+#         uses: stefanzweifel/git-auto-commit-action@v4
+#         with:
+#           commit_message: "chore: update canary-checker chart dependency to ${{ needs.semantic-release.outputs.release-version }}"
+#           repository: ./incident-commander
