@@ -150,4 +150,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "chore: update canary-checker chart dependency to ${{ needs.semantic-release.outputs.release-version }}"
-          repository: ./incident-commander
+          repository: ./incident-commander-chart
